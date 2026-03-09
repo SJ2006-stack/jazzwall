@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useAuth } from "@/hooks/useAuth"
+import { Show, UserButton } from "@clerk/nextjs"
+import { useUser } from "@clerk/nextjs"
 
 const navItems = [
   {
@@ -37,7 +38,7 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname()
-  const { user, signOut } = useAuth()
+  const { user } = useUser()
 
   return (
     <aside className="w-[220px] h-screen flex flex-col border-r border-zinc-200/80 bg-[#F5F4F1]/60 backdrop-blur-xl">
@@ -79,28 +80,26 @@ export default function Sidebar() {
 
       {/* User section */}
       <div className="px-3 py-4 border-t border-zinc-200/60">
-        {user ? (
+        <Show when="signed-in">
           <div className="flex items-center gap-3 px-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-[10px] font-bold text-white">
-                {user.name.charAt(0).toUpperCase()}
-              </span>
-            </div>
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "w-8 h-8",
+                },
+              }}
+            />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-zinc-800 truncate">{user.name}</p>
-              <p className="text-[10px] text-zinc-600 truncate">{user.email}</p>
+              <p className="text-xs font-medium text-zinc-800 truncate">
+                {user?.fullName ?? user?.firstName ?? "User"}
+              </p>
+              <p className="text-[10px] text-zinc-600 truncate">
+                {user?.primaryEmailAddress?.emailAddress ?? ""}
+              </p>
             </div>
-            <button
-              onClick={signOut}
-              className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/60 transition-colors cursor-pointer"
-              title="Sign out"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-              </svg>
-            </button>
           </div>
-        ) : (
+        </Show>
+        <Show when="signed-out">
           <div className="flex items-center gap-3 px-2">
             <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0">
               <span className="text-[10px] font-bold text-zinc-500">?</span>
@@ -110,7 +109,7 @@ export default function Sidebar() {
               <p className="text-[10px] text-zinc-600">Free plan</p>
             </div>
           </div>
-        )}
+        </Show>
       </div>
     </aside>
   )

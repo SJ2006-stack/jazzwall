@@ -3,34 +3,24 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { useAuth } from "@/hooks/useAuth"
-import GoogleAuthModal from "@/components/landing/GoogleAuthModal"
+import { useUser } from "@clerk/nextjs"
+import { SignInButton } from "@clerk/nextjs"
 
 export default function MeetingInput() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { isSignedIn } = useUser()
   const [link, setLink] = useState("")
   const [loading, setLoading] = useState(false)
-  const [authModalOpen, setAuthModalOpen] = useState(false)
 
   function handleStart() {
-    if (!user) {
-      setAuthModalOpen(true)
+    if (!isSignedIn) {
+      // The SignInButton wrapper will handle the unauthenticated case,
+      // but if called programmatically, we simply return.
       return
     }
     setLoading(true)
     const meetingId = crypto.randomUUID()
     router.push(`/meeting/${meetingId}`)
-  }
-
-  function handleAuthSuccess() {
-    setAuthModalOpen(false)
-    // After auth, auto-start if link is present
-    if (link.trim().length > 0) {
-      setLoading(true)
-      const meetingId = crypto.randomUUID()
-      router.push(`/meeting/${meetingId}`)
-    }
   }
 
   const isValidLink = /meet\.google\.com\/[a-z]/.test(link.trim())
@@ -68,34 +58,62 @@ export default function MeetingInput() {
         </div>
 
         {/* Start button */}
-        <motion.button
-          onClick={handleStart}
-          disabled={!isValidLink || loading}
-          className="
-            relative px-6 py-3.5
-            bg-zinc-900 text-white
-            rounded-xl
-            text-sm font-semibold
-            hover:bg-zinc-800 active:bg-zinc-700
-            disabled:opacity-40 disabled:cursor-not-allowed
-            transition-colors duration-150
-            shadow-sm
-            cursor-pointer
-            flex items-center justify-center gap-2
-            w-full sm:w-auto
-          "
-          whileHover={isValidLink ? { scale: 1.04 } : {}}
-          whileTap={isValidLink ? { scale: 0.97 } : {}}
-        >
-          {loading ? (
-            <span className="w-4 h-4 border-2 border-zinc-500 border-t-white rounded-full animate-spin" />
-          ) : (
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" />
-            </svg>
-          )}
-          Start
-        </motion.button>
+        {isSignedIn ? (
+          <motion.button
+            onClick={handleStart}
+            disabled={!isValidLink || loading}
+            className="
+              relative px-6 py-3.5
+              bg-zinc-900 text-white
+              rounded-xl
+              text-sm font-semibold
+              hover:bg-zinc-800 active:bg-zinc-700
+              disabled:opacity-40 disabled:cursor-not-allowed
+              transition-colors duration-150
+              shadow-sm
+              cursor-pointer
+              flex items-center justify-center gap-2
+              w-full sm:w-auto
+            "
+            whileHover={isValidLink ? { scale: 1.04 } : {}}
+            whileTap={isValidLink ? { scale: 0.97 } : {}}
+          >
+            {loading ? (
+              <span className="w-4 h-4 border-2 border-zinc-500 border-t-white rounded-full animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" />
+              </svg>
+            )}
+            Start
+          </motion.button>
+        ) : (
+          <SignInButton mode="modal">
+            <motion.button
+              disabled={!isValidLink}
+              className="
+                relative px-6 py-3.5
+                bg-zinc-900 text-white
+                rounded-xl
+                text-sm font-semibold
+                hover:bg-zinc-800 active:bg-zinc-700
+                disabled:opacity-40 disabled:cursor-not-allowed
+                transition-colors duration-150
+                shadow-sm
+                cursor-pointer
+                flex items-center justify-center gap-2
+                w-full sm:w-auto
+              "
+              whileHover={isValidLink ? { scale: 1.04 } : {}}
+              whileTap={isValidLink ? { scale: 0.97 } : {}}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" />
+              </svg>
+              Start
+            </motion.button>
+          </SignInButton>
+        )}
       </div>
 
       {/* Format hint */}
@@ -109,13 +127,6 @@ export default function MeetingInput() {
           Please enter a valid Google Meet link (e.g. meet.google.com/abc-defg-hij)
         </motion.p>
       )}
-
-      {/* Google Auth Modal */}
-      <GoogleAuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        onSuccess={handleAuthSuccess}
-      />
     </>
   )
 }

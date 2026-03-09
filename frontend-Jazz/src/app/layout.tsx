@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, Playfair_Display, Geist_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "../styles/globals.css";
@@ -58,7 +59,9 @@ export default function RootLayout({
       <body
         className={`${dmSans.variable} ${playfair.variable} ${geistMono.variable} font-sans antialiased bg-[#FAF9F7] text-zinc-900 selection:bg-amber-500/20`}
       >
-        {children}
+        <ClerkProvider signUpFallbackRedirectUrl="/dashboard" signInFallbackRedirectUrl="/dashboard">
+          {children}
+        </ClerkProvider>
         <Analytics />
         <SpeedInsights />
       </body>

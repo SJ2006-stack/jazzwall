@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
@@ -13,22 +12,11 @@ interface Props {
 
 export default function GoogleAuthModal({ isOpen, onClose, onSuccess }: Props) {
   const { signInWithGoogle } = useAuth()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  async function handleGoogleSignIn() {
-    setLoading(true)
-    setError(null)
-    try {
-      await signInWithGoogle()
-      // Supabase OAuth redirects the browser, so onSuccess won't fire here.
-      // If we reach this line (e.g. popup mode), close the modal.
-      onSuccess()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign-in failed. Please try again.")
-    } finally {
-      setLoading(false)
-    }
+  function handleGoogleSignIn() {
+    // Clerk handles the redirect flow — opens the sign-in modal / redirect
+    signInWithGoogle()
+    onSuccess()
   }
 
   return (
@@ -74,24 +62,9 @@ export default function GoogleAuthModal({ isOpen, onClose, onSuccess }: Props) {
                   Your data stays private and encrypted.
                 </p>
 
-                {/* Error message */}
-                <AnimatePresence>
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600"
-                    >
-                      {error}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
                 {/* Google Sign-In Button */}
                 <motion.button
                   onClick={handleGoogleSignIn}
-                  disabled={loading}
                   className="
                     w-full flex items-center justify-center gap-3
                     px-6 py-4 rounded-xl
@@ -99,18 +72,14 @@ export default function GoogleAuthModal({ isOpen, onClose, onSuccess }: Props) {
                     font-semibold text-base
                     border border-zinc-300
                     hover:bg-zinc-50 active:bg-zinc-100
-                    disabled:opacity-60 disabled:cursor-not-allowed
                     transition-all duration-150
                     shadow-sm
                     cursor-pointer
                   "
-                  whileHover={{ scale: loading ? 1 : 1.01 }}
-                  whileTap={{ scale: loading ? 1 : 0.98 }}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  {loading ? (
-                    <span className="w-5 h-5 border-2 border-zinc-400 border-t-zinc-900 rounded-full animate-spin" />
-                  ) : (
-                    <svg className="w-6 h-6" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24">
                       <path
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
                         fill="#4285F4"
@@ -128,8 +97,7 @@ export default function GoogleAuthModal({ isOpen, onClose, onSuccess }: Props) {
                         fill="#EA4335"
                       />
                     </svg>
-                  )}
-                  {loading ? "Redirecting…" : "Continue with Google"}
+                  Continue with Google
                 </motion.button>
 
                 {/* Divider */}
