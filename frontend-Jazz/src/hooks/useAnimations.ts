@@ -1,11 +1,17 @@
 import { useEffect, useState, useRef } from "react"
+import { useInView } from "framer-motion"
 
 export function useCountUp(target: number, duration = 2000) {
+  const ref = useRef<HTMLElement>(null)
+  const inView = useInView(ref, { once: true, margin: "-40px" })
   const [count, setCount] = useState(0)
 
   useEffect(() => {
+    if (!inView) return
+
     let start = 0
-    const increment = target / (duration / 16)
+    const durationMs = typeof duration === "number" && duration < 100 ? duration * 1000 : duration
+    const increment = target / (durationMs / 16)
 
     const timer = setInterval(() => {
       start += increment
@@ -18,9 +24,9 @@ export function useCountUp(target: number, duration = 2000) {
     }, 16)
 
     return () => clearInterval(timer)
-  }, [target, duration])
+  }, [target, duration, inView])
 
-  return count
+  return { ref, count, inView }
 }
 
 export function useScrollProgress() {
