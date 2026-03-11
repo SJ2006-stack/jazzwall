@@ -1,34 +1,48 @@
 const router = require('express').Router()
 const supabase = require('../lib/supabase')
 const { generateSummary } = require('../lib/summarise')
+const logger = require('../lib/logger')
 
 // Live transcript chunks from Vexa
 router.post('/transcript', async (req, res) => {
   const { bot_id, speaker, text, timestamp } = req.body
 
+  logger.debug('Transcript chunk received', { bot_id, speaker, text })
+
   try {
-    // Get meeting_id from bot_id
-    const { data: meeting } = await supabase
+    const { data: meeting, error: meetingError } = await supabase
       .from('meetings')
       .select('id')
       .eq('bot_id', bot_id)
       .single()
 
-    if (!meeting) return res.status(404).json({ error: 'Meeting not found' })
+    if (meetingError || !meeting) {
+      logger.warn('Meeting not found for bot', { bot_id })
+      return res.status(404).json({ error: 'Meeting not found' })
+    }
 
-    // Insert transcript line
-    // Supabase Realtime automatically pushes this to frontend
-    await supabase.from('transcripts').insert({
-      meeting_id: meeting.id,
-      speaker: speaker || 'Speaker',
-      text,
-      timestamp: timestamp || Date.now()
-    })
+    const { error } = await supabase
+      .from('transcripts')
+      .insert({
+        meeting_id: meeting.id,
+        speaker: speaker || 'Speaker',
+        text,
+        timestamp: timestamp || Date.now()
+      })
 
+    if (error) {
+      logger.error('Transcript insert failed', { error: error.message })
+      throw error
+    }
+
+    logger.debug('Transcript saved', { meeting_id: meeting.id })
     res.json({ success: true })
 
   } catch (err) {
-    console.error('Transcript webhook error:', err)
+    logger.error('Transcript webhook error', {
+      error: err.message,
+      bot_id
+    })
     res.status(500).json({ error: err.message })
   }
 })
@@ -36,23 +50,25 @@ router.post('/transcript', async (req, res) => {
 // Meeting ended — trigger summary
 router.post('/completed', async (req, res) => {
   const { bot_id } = req.body
+  logger.info('Meeting completed', { bot_id })
 
   try {
-    const { data: meeting } = await supabase
+    const { data: meeting, error: meetingError } = await supabase
       .from('meetings')
       .select('id')
       .eq('bot_id', bot_id)
       .single()
 
-    if (!meeting) return res.status(404).json({ error: 'Meeting not found' })
+    if (meetingError || !meeting) {
+      logger.warn('Meeting not found on completion', { bot_id })
+      return res.status(404).json({ error: 'Meeting not found' })
+    }
 
-    // Update status
     await supabase
       .from('meetings')
       .update({ status: 'completed' })
       .eq('bot_id', bot_id)
 
-    // Fetch full transcript
     const { data: lines } = await supabase
       .from('transcripts')
       .select('speaker, text')
@@ -63,13 +79,21 @@ router.post('/completed', async (req, res) => {
       .map(l => `${l.speaker}: ${l.text}`)
       .join('\n')
 
+    logger.info('Generating summary', {
+      meeting_id: meeting.id,
+      transcript_lines: lines.length
+    })
+
     // Run summary async — don't block webhook response
     generateSummary(fullTranscript, meeting.id)
 
     res.json({ success: true })
 
   } catch (err) {
-    console.error('Completed webhook error:', err)
+    logger.error('Completed webhook error', {
+      error: err.message,
+      bot_id
+    })
     res.status(500).json({ error: err.message })
   }
 })

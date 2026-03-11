@@ -1,6 +1,9 @@
 const supabase = require('./supabase')
+const logger = require('./logger')
 
 exports.generateSummary = async (transcript, meetingId) => {
+  logger.info('Summary generation started', { meetingId })
+
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -30,11 +33,20 @@ ${transcript.slice(0, 8000)}`
       })
     })
 
+    if (!response.ok) {
+      const errText = await response.text()
+      logger.error('Groq API error', {
+        status: response.status,
+        response: errText
+      })
+      throw new Error(`Groq returned ${response.status}`)
+    }
+
     const data = await response.json()
     const raw = data.choices[0].message.content
     const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
 
-    await supabase.from('summaries').insert({
+    const { error } = await supabase.from('summaries').insert({
       meeting_id: meetingId,
       summary: parsed.summary,
       action_items: parsed.action_items,
@@ -42,9 +54,18 @@ ${transcript.slice(0, 8000)}`
       follow_ups: parsed.follow_ups
     })
 
-    console.log(`Summary generated for meeting ${meetingId}`)
+    if (error) {
+      logger.error('Summary save failed', { error: error.message })
+      throw error
+    }
+
+    logger.info('Summary generated and saved', { meetingId })
 
   } catch (err) {
-    console.error('Summary generation error:', err)
+    logger.error('Summary generation failed', {
+      error: err.message,
+      stack: err.stack,
+      meetingId
+    })
   }
 }
