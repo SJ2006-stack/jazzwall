@@ -1,11 +1,13 @@
 const router = require('express').Router()
 const supabase = require('../lib/supabase')
+const { verifyClerkToken } = require('../lib/auth')
 
-router.post('/join', async (req, res) => {
-  const { meetingUrl, userId, meetingId } = req.body
+router.post('/join', verifyClerkToken, async (req, res) => {
+  const { meetingUrl, meetingId } = req.body
+  const userId = req.userId // from verified Clerk JWT
 
-  if (!meetingUrl || !userId) {
-    return res.status(400).json({ error: 'meetingUrl and userId required' })
+  if (!meetingUrl) {
+    return res.status(400).json({ error: 'meetingUrl is required' })
   }
 
   try {
@@ -49,7 +51,7 @@ router.post('/join', async (req, res) => {
   }
 })
 
-router.post('/leave', async (req, res) => {
+router.post('/leave', verifyClerkToken, async (req, res) => {
   const { botId } = req.body
   
   await fetch(`${process.env.VEXA_URL}/bots/${botId}`, {
