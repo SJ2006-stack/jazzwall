@@ -21,7 +21,7 @@ router.post('/join', requireAuth, async (req, res) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.VEXA_API_KEY}`
+        'X-API-Key': process.env.VEXA_API_KEY
       },
       body: JSON.stringify({
         meeting_url: meetingUrl,
