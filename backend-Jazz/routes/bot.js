@@ -25,6 +25,8 @@ router.post('/join', requireAuth, async (req, res) => {
       },
       body: JSON.stringify({
         meeting_url: meetingUrl,
+        platform: "google_meet",
+        native_meeting_id: meetingUrl.split('/').pop(),
         bot_name: "MeetingMind 🇮🇳",
         entry_message: "Namaste! I'm taking notes for this meeting.",
         recording_mode: "speaker_view"
