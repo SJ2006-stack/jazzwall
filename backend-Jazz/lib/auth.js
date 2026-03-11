@@ -1,9 +1,5 @@
-const { createClerkClient } = require('@clerk/backend')
+const { verifyToken } = require('@clerk/backend')
 const logger = require('./logger')
-
-const clerk = createClerkClient({
-  secretKey: process.env.CLERK_SECRET_KEY
-})
 
 exports.requireAuth = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1]
@@ -14,7 +10,9 @@ exports.requireAuth = async (req, res, next) => {
   }
 
   try {
-    const payload = await clerk.verifyToken(token)
+    const payload = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY
+    })
     req.userId = payload.sub
     logger.debug('Auth verified', { userId: payload.sub })
     next()
@@ -23,6 +21,3 @@ exports.requireAuth = async (req, res, next) => {
     res.status(401).json({ error: 'Unauthorized' })
   }
 }
-
-
-
