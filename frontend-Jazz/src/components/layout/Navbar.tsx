@@ -53,10 +53,7 @@ export default function Navbar() {
 
   return (
     <>
-      <motion.header
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
+      <header
         className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-5xl transition-all duration-300 ${
           scrolled
             ? "bg-white/80 backdrop-blur-xl shadow-lg shadow-zinc-900/[0.04] border border-zinc-200/60"
@@ -78,17 +75,14 @@ export default function Navbar() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map((item, i) => (
-              <motion.a
+            {NAV_LINKS.map((item) => (
+              <a
                 key={item.label}
                 href={item.href}
                 className="px-3.5 py-2 rounded-lg text-[13px] font-medium text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100/80 transition-all duration-200"
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.15 + i * 0.06 }}
               >
                 {item.label}
-              </motion.a>
+              </a>
             ))}
           </nav>
 
@@ -136,7 +130,7 @@ export default function Navbar() {
             </button>
           </div>
         </div>
-      </motion.header>
+      </header>
 
       <AnimatePresence>
         {mobileMenuOpen && (

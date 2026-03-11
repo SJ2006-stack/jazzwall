@@ -18,6 +18,11 @@ import Footer from "@/components/layout/Footer"
 
 export default function Home() {
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Show scroll-to-top button after scrolling
   useEffect(() => {
@@ -27,7 +32,7 @@ export default function Home() {
   }, [])
 
   return (
-    <div className="relative min-h-screen bg-[#FAF9F7] text-zinc-900">
+    <div className={`relative min-h-screen bg-[#FAF9F7] text-zinc-900 ${mounted ? "" : "page-ready"}`}>
       {/* Skip to content — accessibility */}
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-zinc-900 focus:text-white focus:rounded-lg focus:text-sm focus:font-medium">
         Skip to main content
@@ -110,18 +115,14 @@ export default function Home() {
                     <path d="M17 13H21C21.5523 13 22 13.4477 22 14V17C22 17.5523 21.5523 18 21 18H17" stroke="#5059C9" strokeWidth="1.3" strokeLinecap="round"/>
                   </svg>
                 )}
-              ].map((tool, i) => (
-                <motion.span
+              ].map((tool) => (
+                <span
                   key={tool.name}
                   className="flex items-center gap-2.5 text-xs font-medium hover:text-zinc-600 transition-colors"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 1.0 + i * 0.1 }}
-                  whileHover={{ y: -2, scale: 1.04 }}
                 >
                   {tool.icon}
                   {tool.name}
-                </motion.span>
+                </span>
               ))}
             </div>
           </motion.div>

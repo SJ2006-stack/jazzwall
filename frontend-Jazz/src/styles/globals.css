@@ -48,6 +48,16 @@ body {
   background: #a1a1aa;
 }
 
+/* ── Anti-flicker: hide page until JS hydrates ──── */
+.page-ready {
+  opacity: 0;
+  animation: page-reveal 0.4s ease-out 0.05s forwards;
+}
+
+@keyframes page-reveal {
+  to { opacity: 1; }
+}
+
 /* ── Utility animations ──────────────────────────── */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
