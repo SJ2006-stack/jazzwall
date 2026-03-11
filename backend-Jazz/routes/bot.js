@@ -15,6 +15,22 @@ router.post('/join', requireAuth, async (req, res) => {
   }
 
   try {
+    // Check if a bot is already active for this meeting
+    const { data: existingBot } = await supabase
+      .from('meetings')
+      .select('*')
+      .eq('id', meetingId)
+      .eq('status', 'active')
+      .single()
+
+    if (existingBot) {
+      logger.info('Bot already active for meeting', { meetingId })
+      return res.status(200).json({
+        message: 'Bot already in meeting',
+        meetingId
+      })
+    }
+
     logger.info('Sending bot to Vexa Cloud', { meetingUrl })
 
     const vexaRes = await fetch('https://api.cloud.vexa.ai/bots', {
@@ -37,6 +53,16 @@ router.post('/join', requireAuth, async (req, res) => {
 
     if (!vexaRes.ok) {
       const errText = await vexaRes.text()
+
+      // 409 = bot already in this meeting — not an error
+      if (vexaRes.status === 409) {
+        logger.info('Vexa 409 — bot already active', { meetingUrl })
+        return res.status(200).json({
+          message: 'Bot already active in this meeting',
+          meetingId
+        })
+      }
+
       logger.error('Vexa API error', {
         status: vexaRes.status,
         response: errText
