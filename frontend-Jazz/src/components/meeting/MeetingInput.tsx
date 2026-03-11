@@ -20,10 +20,15 @@ export default function MeetingInput() {
     setError("")
 
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL
+      if (!apiUrl) {
+        throw new Error("Backend API URL is not configured. Please set NEXT_PUBLIC_API_URL.")
+      }
+
       const meetingId = crypto.randomUUID()
       const token = await getToken()
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/bot/join`, {
+      const res = await fetch(`${apiUrl}/api/bot/join`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
