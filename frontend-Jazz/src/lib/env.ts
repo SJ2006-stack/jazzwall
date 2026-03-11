@@ -5,7 +5,7 @@ import { z } from "zod"
  * Validated when API routes run.
  */
 const serverSchema = z.object({
-  GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
+  GEMINI_API_KEY: z.string().min(1).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
   CLERK_SECRET_KEY: z.string().optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -51,6 +51,7 @@ export function getClientEnv() {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "",
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "",
   }
 
   const result = clientSchema.safeParse(clientEnv)

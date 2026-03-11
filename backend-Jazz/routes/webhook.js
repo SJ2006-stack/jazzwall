@@ -75,7 +75,7 @@ router.post('/completed', async (req, res) => {
       .eq('meeting_id', meeting.id)
       .order('timestamp')
 
-    const fullTranscript = lines
+    const fullTranscript = (lines ?? [])
       .map(l => `${l.speaker}: ${l.text}`)
       .join('\n')
 

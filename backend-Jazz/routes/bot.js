@@ -1,9 +1,9 @@
 const router = require('express').Router()
 const supabase = require('../lib/supabase')
-const { verifyClerkToken } = require('../lib/auth')
+const { requireAuth } = require('../lib/auth')
 const logger = require('../lib/logger')
 
-router.post('/join', verifyClerkToken, async (req, res) => {
+router.post('/join', requireAuth, async (req, res) => {
   const { meetingUrl, meetingId } = req.body
   const userId = req.userId // from verified Clerk JWT
 
@@ -74,7 +74,7 @@ router.post('/join', verifyClerkToken, async (req, res) => {
   }
 })
 
-router.post('/leave', verifyClerkToken, async (req, res) => {
+router.post('/leave', requireAuth, async (req, res) => {
   const { botId } = req.body
   logger.info('Bot leave requested', { botId })
 
