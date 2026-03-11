@@ -25,6 +25,3 @@ exports.requireAuth = async (req, res, next) => {
 }
 ```
 
-Add to Railway backend variables:
-```
-CLERK_SECRET_KEY    sk_live_your-clerk-secret-key
