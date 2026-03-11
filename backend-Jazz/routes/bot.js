@@ -15,13 +15,13 @@ router.post('/join', requireAuth, async (req, res) => {
   }
 
   try {
-    logger.info('Sending bot to Vexa', { meetingUrl })
+    logger.info('Sending bot to Vexa Cloud', { meetingUrl })
 
-    const vexaRes = await fetch(`${process.env.VEXA_URL}/bots`, {
+    const vexaRes = await fetch('https://api.cloud.vexa.ai/bots', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.VEXA_TOKEN}`
+        'Authorization': `Bearer ${process.env.VEXA_API_KEY}`
       },
       body: JSON.stringify({
         meeting_url: meetingUrl,
@@ -79,9 +79,9 @@ router.post('/leave', requireAuth, async (req, res) => {
   logger.info('Bot leave requested', { botId })
 
   try {
-    await fetch(`${process.env.VEXA_URL}/bots/${botId}`, {
+    await fetch(`https://api.cloud.vexa.ai/bots/${botId}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${process.env.VEXA_TOKEN}` }
+      headers: { 'Authorization': `Bearer ${process.env.VEXA_API_KEY}` }
     })
 
     await supabase

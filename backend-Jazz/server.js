@@ -56,7 +56,7 @@ app.get('/health', async (req, res) => {
       groq: !!process.env.GROQ_API_KEY,
       deepgram: !!process.env.DEEPGRAM_API_KEY,
       azure: !!process.env.AZURE_SPEECH_KEY,
-      vexa: !!process.env.VEXA_URL,
+      vexa: !!process.env.VEXA_API_KEY,
       clerk: !!process.env.CLERK_SECRET_KEY,
     },
     database: dbError ? 'error' : 'connected'
