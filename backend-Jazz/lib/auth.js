@@ -1,25 +1,30 @@
-const { verifyToken } = require('@clerk/backend')
+const { createClerkClient } = require('@clerk/backend')
+const logger = require('./logger')
 
-/**
- * Express middleware that verifies a Clerk JWT from the Authorization header.
- * On success, attaches `req.userId` (the Clerk user ID, e.g. "user_2x…").
- */
-exports.verifyClerkToken = async (req, res, next) => {
-  const authHeader = req.headers.authorization
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null
+const clerk = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY
+})
+
+exports.requireAuth = async (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1]
 
   if (!token) {
-    return res.status(401).json({ error: 'Missing authorization token' })
+    logger.warn('No auth token', { path: req.path })
+    return res.status(401).json({ error: 'Unauthorized' })
   }
 
   try {
-    const payload = await verifyToken(token, {
-      secretKey: process.env.CLERK_SECRET_KEY,
-    })
-    req.userId = payload.sub // Clerk user ID
+    const payload = await clerk.verifyToken(token)
+    req.userId = payload.sub
+    logger.debug('Auth verified', { userId: payload.sub })
     next()
   } catch (err) {
-    console.error('Clerk token verification failed:', err.message)
+    logger.warn('Auth failed', { error: err.message })
     res.status(401).json({ error: 'Unauthorized' })
   }
 }
+```
+
+Add to Railway backend variables:
+```
+CLERK_SECRET_KEY    sk_live_your-clerk-secret-key
