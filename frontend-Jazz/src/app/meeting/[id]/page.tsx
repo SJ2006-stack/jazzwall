@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { useUser, useAuth } from "@clerk/nextjs"
+import { useUser } from "@clerk/nextjs"
 
 import SummaryPanel from "@/components/ui/Meeting_ui/SummaryPanel"
 import ActionItems from "@/components/ui/Meeting_ui/ActionItems"
@@ -32,7 +32,6 @@ export default function MeetingPage() {
   const params = useParams()
   const router = useRouter()
   const { user, isLoaded } = useUser()
-  const { getToken } = useAuth()
   const meetingId = typeof params.id === "string" ? params.id : ""
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -179,56 +178,6 @@ export default function MeetingPage() {
       supabase.removeChannel(meetingChannel)
     }
   }, [meeting?.status, meetingId])
-
-  /* ── Poll backend for live transcript from Vexa Cloud ── */
-  useEffect(() => {
-    if (!meeting || meeting.status !== "active" || !meetingId) return
-
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL
-    if (!apiUrl) return
-
-    let isCancelled = false
-
-    async function pollTranscript() {
-      try {
-        const token = await getToken()
-        if (!token || isCancelled) return
-
-        const res = await fetch(`${apiUrl}/api/bot/transcript/${meetingId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-
-        if (!res.ok || isCancelled) return
-
-        const data = await res.json()
-        // Backend syncs to Supabase, which fires Realtime events.
-        // But as a safety net, also update state directly if we got data.
-        if (data.transcript && data.transcript.length > 0) {
-          setTranscript((prev) => {
-            if (data.transcript.length > prev.length) {
-              return data.transcript.map((t: { speaker: string; text: string; timestamp: string | number | null }) => ({
-                speaker: t.speaker ?? "Speaker",
-                text: t.text,
-                timestamp: t.timestamp != null ? String(t.timestamp) : "",
-              }))
-            }
-            return prev
-          })
-        }
-      } catch (err) {
-        console.warn("Transcript poll failed:", err)
-      }
-    }
-
-    // Initial poll immediately, then every 5 seconds
-    pollTranscript()
-    const interval = setInterval(pollTranscript, 5000)
-
-    return () => {
-      isCancelled = true
-      clearInterval(interval)
-    }
-  }, [meeting?.status, meetingId, getToken])
 
   /* ── Elapsed timer for active meetings ── */
   useEffect(() => {
