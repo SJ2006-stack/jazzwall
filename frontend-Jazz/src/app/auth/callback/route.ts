@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { currentUser } from "@clerk/nextjs/server"
 import { supabaseAdmin } from "@/lib/supabase"
 
+export const runtime = "edge"
+
 /**
  * After Clerk sign-in, the user can be redirected here to sync their
  * profile into the Supabase waitlist table, then continue to /dashboard.

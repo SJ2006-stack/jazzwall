@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { rateLimit } from "@/lib/rate-limit"
 
+export const runtime = "edge"
+
 export async function POST(req: NextRequest) {
   try {
     // ── Rate limiting: 10 requests per minute per IP ──
