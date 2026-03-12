@@ -51,7 +51,7 @@ router.post('/join', requireAuth, async (req, res) => {
         meeting_url: meetingUrl,
         bot_name: "MeetingMind 🇮🇳",
         entry_message: "Namaste! I'm taking notes for this meeting.",
-        webhook_url: `${process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace('localhost:3000', 'localhost:' + (process.env.PORT || '3001')) : 'http://localhost:3001'}/api/webhook/transcript`
+        webhook_url: `${process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3001}`}/api/webhook/transcript`
       })
     })
 
