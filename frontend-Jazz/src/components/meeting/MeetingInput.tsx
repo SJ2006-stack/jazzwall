@@ -28,7 +28,8 @@ export default function MeetingInput() {
       const meetingId = crypto.randomUUID()
       const token = await getToken()
 
-      const res = await fetch(`${apiUrl}/api/bot/join`, {
+      // Fire bot join in background — don't await
+      fetch(`${apiUrl}/api/bot/join`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -41,12 +42,7 @@ export default function MeetingInput() {
         })
       })
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to start recording")
-      }
-
+      // Redirect immediately — bot joins in background
       router.push(`/meeting/${meetingId}`)
 
     } catch (err: any) {
