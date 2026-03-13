@@ -1,12 +1,9 @@
-FROM vexaai/vexa-lite:latest AS base
+FROM vexaai/vexa-lite:latest
 
-# Fix Pydantic
-RUN pip install --upgrade pydantic==2.7.1 fastapi==0.111.0 pydantic-settings==2.3.4
+# Fix supervisor config — ADMIN_API_TOKEN → VEXA_TOKEN
+RUN sed -i 's/ADMIN_API_TOKEN="%(ENV_ADMIN_API_TOKEN)s"/ADMIN_API_TOKEN="%(ENV_VEXA_TOKEN)s"/g' /etc/supervisor/conf.d/vexa.conf
 
-# Remove unnecessary files to shrink image
-RUN apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    rm -rf /tmp/* && \
-    rm -rf /root/.cache && \
-    find / -name "*.pyc" -delete && \
-    find / -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+# Force reinstall pydantic from source (no binary wheels)
+RUN pip install --upgrade --force-reinstall --no-binary pydantic pydantic==2.7.1
+RUN pip install --upgrade --force-reinstall --no-binary fastapi fastapi==0.111.0
+RUN pip install --upgrade pydantic-settings==2.3.4
