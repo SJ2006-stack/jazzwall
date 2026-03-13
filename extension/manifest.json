@@ -27,7 +27,7 @@
     {
       "matches": ["https://meet.google.com/*"],
       "js": ["content.js"],
-      "run_at": "document_idle"
+      "run_at": "document_end"
     },
     {
       "matches": ["https://jazzwall.vercel.app/*", "http://localhost:3000/*"],
