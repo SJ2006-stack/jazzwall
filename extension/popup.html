@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JazzWall Recorder</title>
+    <style>
+      body {
+        width: 340px;
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        background: #fafaf9;
+        color: #111827;
+      }
+      .wrap { padding: 14px; }
+      h1 { margin: 0 0 10px; font-size: 15px; }
+      p { margin: 0; font-size: 12px; color: #6b7280; }
+      .row { margin-top: 10px; }
+      input {
+        width: 100%;
+        border: 1px solid #d4d4d8;
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 12px;
+        box-sizing: border-box;
+      }
+      .btns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      button {
+        border: none;
+        border-radius: 10px;
+        padding: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      #startBtn { background: #111827; color: #fff; }
+      #stopBtn { background: #e4e4e7; color: #111827; }
+      .status {
+        margin-top: 12px;
+        font-size: 12px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 10px;
+      }
+      .error { color: #dc2626; margin-top: 8px; font-size: 12px; min-height: 16px; }
+      .hint { margin-top: 8px; font-size: 11px; color: #6b7280; }
+      a { color: #b45309; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>JazzWall Recorder</h1>
+      <p>Start/stop live capture from your current Google Meet tab.</p>
+
+      <div class="row">
+        <input id="backendUrl" placeholder="Backend URL (e.g. https://your-api.up.railway.app)" />
+      </div>
+
+      <div class="row">
+        <input id="authToken" placeholder="Clerk JWT token (Bearer token)" />
+      </div>
+
+      <div class="row">
+        <input id="meetingUrl" placeholder="Google Meet URL" />
+      </div>
+
+      <div class="btns">
+        <button id="startBtn">Start recording</button>
+        <button id="stopBtn">Stop recording</button>
+      </div>
+
+      <div id="status" class="status">Status: Idle</div>
+      <div id="error" class="error"></div>
+      <p class="hint">
+        Need token? You can mint a Clerk session JWT in your app and paste it here for MVP.
+      </p>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

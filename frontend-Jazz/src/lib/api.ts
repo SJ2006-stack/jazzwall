@@ -1,35 +1,61 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 export const api = {
-  // Join a meeting
-  joinMeeting: async (meetingUrl: string, userId: string, meetingId: string) => {
-    const res = await fetch(`${API_URL}/api/bot/join`, {
+  startStream: async (payload: {
+    meetingId: string
+    meetUrl?: string
+    languageHint?: string
+  }, token: string) => {
+    const res = await fetch(`${API_URL}/api/stream/start`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${await getClerkToken()}`
+        'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ meetingUrl, userId, meetingId })
+      body: JSON.stringify(payload),
     })
     return res.json()
   },
 
-  // Leave a meeting
-  leaveMeeting: async (botId: string) => {
-    const res = await fetch(`${API_URL}/api/bot/leave`, {
+  sendChunk: async (payload: {
+    meetingId: string
+    chunkBase64?: string
+    mimeType?: string
+    timestamp?: number
+    speaker?: string
+    text?: string
+    languageHint?: string
+  }, token: string) => {
+    const res = await fetch(`${API_URL}/api/stream/chunk`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${await getClerkToken()}`
+        'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ botId })
+      body: JSON.stringify(payload),
     })
     return res.json()
-  }
-}
+  },
 
-// Get Clerk token for backend auth
-async function getClerkToken() {
-  const { getToken } = await import('@clerk/nextjs')
-  return getToken()
+  stopStream: async (meetingId: string, token: string) => {
+    const res = await fetch(`${API_URL}/api/stream/stop`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ meetingId }),
+    })
+    return res.json()
+  },
+
+  getMeeting: async (meetingId: string, token: string) => {
+    const res = await fetch(`${API_URL}/api/stream/${meetingId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+    return res.json()
+  },
 }

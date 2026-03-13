@@ -1,55 +1,14 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { useUser, useAuth, SignInButton } from "@clerk/nextjs"
+import { useUser, SignInButton } from "@clerk/nextjs"
+
+const CHROME_WEB_STORE_URL = "https://chrome.google.com/webstore/detail/jazzwall-extension-placeholder"
 
 export default function MeetingInput() {
-  const router = useRouter()
-  const { isSignedIn, user } = useUser()
-  const { getToken } = useAuth()
+  const { isSignedIn } = useUser()
   const [link, setLink] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-
-  async function handleStart() {
-    if (!isSignedIn) return
-
-    setLoading(true)
-    setError("")
-
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL
-      if (!apiUrl) {
-        throw new Error("Backend API URL is not configured. Please set NEXT_PUBLIC_API_URL.")
-      }
-
-      const meetingId = crypto.randomUUID()
-      const token = await getToken()
-
-      // Fire bot join in background — don't await
-      fetch(`${apiUrl}/api/bot/join`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          meetingUrl: link.trim(),
-          userId: user?.id,
-          meetingId
-        })
-      })
-
-      // Redirect immediately — bot joins in background
-      router.push(`/meeting/${meetingId}`)
-
-    } catch (err: any) {
-      setError(err.message || "Something went wrong. Please try again.")
-      setLoading(false)
-    }
-  }
 
   const isValidLink = /meet\.google\.com\/[a-z]/.test(link.trim())
   const showFormatHint = link.trim().length > 0 && !isValidLink
@@ -70,8 +29,6 @@ export default function MeetingInput() {
             placeholder="Paste your Google Meet link…"
             value={link}
             onChange={(e) => setLink(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && isValidLink && handleStart()}
-            disabled={loading}
             className="
               relative w-full px-5 py-3.5
               bg-white backdrop-blur-sm
@@ -82,67 +39,69 @@ export default function MeetingInput() {
               focus:border-amber-400 focus:ring-2 focus:ring-amber-500/15
               transition-all duration-200
               shadow-sm
-              disabled:opacity-60
             "
           />
         </div>
 
-        {/* Start button */}
+        {/* Extension install button */}
         {isSignedIn ? (
-          <motion.button
-            onClick={handleStart}
-            disabled={!isValidLink || loading}
+          <motion.a
+            href={CHROME_WEB_STORE_URL}
+            target="_blank"
+            rel="noreferrer"
             className="
               relative px-6 py-3.5
               bg-zinc-900 text-white
               rounded-xl
               text-sm font-semibold
               hover:bg-zinc-800 active:bg-zinc-700
-              disabled:opacity-40 disabled:cursor-not-allowed
               transition-colors duration-150
               shadow-sm cursor-pointer
               flex items-center justify-center gap-2
               w-full sm:w-auto
             "
-            whileHover={isValidLink ? { scale: 1.04 } : {}}
-            whileTap={isValidLink ? { scale: 0.97 } : {}}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
           >
-            {loading ? (
-              <span className="w-4 h-4 border-2 border-zinc-500 border-t-white rounded-full animate-spin" />
-            ) : (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" />
-              </svg>
-            )}
-            {loading ? "Starting…" : "Start"}
-          </motion.button>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3.75l2.385 4.83 5.33.774-3.858 3.761.91 5.308L12 15.918l-4.767 2.505.91-5.308L4.285 9.354l5.33-.774L12 3.75z" />
+            </svg>
+            Install JazzWall Extension
+          </motion.a>
         ) : (
           <SignInButton mode="modal">
             <motion.button
-              disabled={!isValidLink}
               className="
                 relative px-6 py-3.5
                 bg-zinc-900 text-white
                 rounded-xl
                 text-sm font-semibold
                 hover:bg-zinc-800 active:bg-zinc-700
-                disabled:opacity-40 disabled:cursor-not-allowed
                 transition-colors duration-150
                 shadow-sm cursor-pointer
                 flex items-center justify-center gap-2
                 w-full sm:w-auto
               "
-              whileHover={isValidLink ? { scale: 1.04 } : {}}
-              whileTap={isValidLink ? { scale: 0.97 } : {}}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25m0 0H12m3.75 0l-3 3m-3.75 5.25a3 3 0 013-3h7.5a3 3 0 013 3v7.5a3 3 0 01-3 3h-7.5a3 3 0 01-3-3V13.5z" />
               </svg>
-              Start
+              Sign in to install extension
             </motion.button>
           </SignInButton>
         )}
       </div>
+
+      <motion.p
+        className="text-xs text-zinc-500 mt-3 text-center sm:text-left"
+        initial={{ opacity: 0, y: -4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+      >
+        Install JazzWall Extension to start recording. After installing, open Google Meet, start recording from the extension popup, and then track live transcript in your dashboard.
+      </motion.p>
 
       {/* Format hint */}
       {showFormatHint && (
@@ -153,18 +112,6 @@ export default function MeetingInput() {
           transition={{ duration: 0.2 }}
         >
           Please enter a valid Google Meet link (e.g. meet.google.com/abc-defg-hij)
-        </motion.p>
-      )}
-
-      {/* API error */}
-      {error && (
-        <motion.p
-          className="text-xs text-red-500 mt-2 text-center sm:text-left"
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {error}
         </motion.p>
       )}
     </>

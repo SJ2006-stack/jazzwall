@@ -4,7 +4,7 @@ const cors = require('cors')
 const morgan = require('morgan')
 const logger = require('./lib/logger')
 
-const botRoutes = require('./routes/bot')
+const streamRoutes = require('./routes/stream')
 const webhookRoutes = require('./routes/webhook')
 
 const app = express()
@@ -13,7 +13,7 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
   credentials: true,
 }))
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
 
 // Log every request
 app.use(morgan('combined', {
@@ -33,7 +33,7 @@ app.use((req, res, next) => {
   next()
 })
 
-app.use('/api/bot', botRoutes)
+app.use('/api/stream', streamRoutes)
 app.use('/api/webhook', webhookRoutes)
 
 // Health check with full system status
@@ -56,8 +56,6 @@ app.get('/health', async (req, res) => {
       groq: !!process.env.GROQ_API_KEY,
       deepgram: !!process.env.DEEPGRAM_API_KEY,
       azure: !!process.env.AZURE_SPEECH_KEY,
-      vexa_url: !!process.env.VEXA_URL,
-      vexa_token: !!process.env.VEXA_TOKEN,
       clerk: !!process.env.CLERK_SECRET_KEY,
     },
     database: dbError ? 'error' : 'connected'

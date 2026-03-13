@@ -3,7 +3,7 @@ const supabase = require('../lib/supabase')
 const { generateSummary } = require('../lib/summarise')
 const logger = require('../lib/logger')
 
-// Live transcript chunks from Vexa
+// Live transcript chunks from external transcription events
 router.post('/transcript', async (req, res) => {
   const { bot_id, speaker, text, timestamp } = req.body
 
