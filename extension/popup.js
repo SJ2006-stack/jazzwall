@@ -1,10 +1,11 @@
 const backendUrlInput = document.getElementById('backendUrl')
-const authTokenInput = document.getElementById('authToken')
 const meetingUrlInput = document.getElementById('meetingUrl')
 const startBtn = document.getElementById('startBtn')
 const stopBtn = document.getElementById('stopBtn')
 const statusEl = document.getElementById('status')
 const errorEl = document.getElementById('error')
+
+const JAZZWALL_ORIGIN = 'https://jazzwall.vercel.app'
 
 function showError(message = '') {
   errorEl.textContent = message
@@ -39,9 +40,8 @@ async function refreshStatus() {
 }
 
 async function loadSavedSettings() {
-  const data = await storageGet(['backendUrl', 'authToken'])
+  const data = await storageGet(['backendUrl'])
   backendUrlInput.value = data.backendUrl || 'http://localhost:3001'
-  authTokenInput.value = data.authToken || ''
 
   const tab = await getActiveTab()
   if (tab?.url?.includes('meet.google.com')) {
@@ -49,20 +49,44 @@ async function loadSavedSettings() {
   }
 }
 
+async function findJazzWallTab() {
+  const tabs = await chrome.tabs.query({ url: [`${JAZZWALL_ORIGIN}/*`, 'http://localhost:3000/*'] })
+  return tabs.find((tab) => Boolean(tab.id)) || null
+}
+
+async function fetchTokenFromJazzWallTab() {
+  const tab = await findJazzWallTab()
+
+  if (!tab?.id) {
+    throw new Error('Open jazzwall.vercel.app in a tab and sign in first.')
+  }
+
+  const response = await chrome.tabs.sendMessage(tab.id, {
+    type: 'JAZZWALL_GET_CLERK_TOKEN',
+  })
+
+  if (!response?.success || !response.token) {
+    throw new Error(response?.error || 'Could not fetch auth token from JazzWall tab.')
+  }
+
+  return response.token
+}
+
 startBtn.addEventListener('click', async () => {
   showError('')
 
   const backendUrl = backendUrlInput.value.trim()
-  const token = authTokenInput.value.trim()
   const meetingUrl = meetingUrlInput.value.trim()
 
-  if (!backendUrl || !token || !meetingUrl) {
-    showError('backend URL, Clerk token, and Meet URL are required.')
+  if (!backendUrl || !meetingUrl) {
+    showError('backend URL and Meet URL are required.')
     return
   }
 
   try {
-    await storageSet({ backendUrl, authToken: token })
+    const token = await fetchTokenFromJazzWallTab()
+
+    await storageSet({ backendUrl })
     const tab = await getActiveTab()
 
     const response = await chrome.runtime.sendMessage({

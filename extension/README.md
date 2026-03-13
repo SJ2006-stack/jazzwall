@@ -23,13 +23,12 @@ This extension captures audio from the active Google Meet tab and streams it to 
 2. Open the JazzWall extension popup
 3. Set:
    - Backend URL (`http://localhost:3001` or Railway URL)
-   - Clerk JWT token (Bearer token value)
    - Meet URL
 4. Click **Start recording**
 5. Click **Stop recording** when done
 
 ## Notes
 
-- The popup currently expects a Clerk JWT to be pasted for backend auth.
+- Keep a signed-in tab open at `https://jazzwall.vercel.app` so the extension can auto-fetch Clerk token.
 - `content.js` overlay UI is wired as a Phase 2 visual shell; transcript/action-item updates can be pushed via extension runtime messages.
 - For production, restrict host permissions to your exact Railway domain.
