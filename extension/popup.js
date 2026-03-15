@@ -1,11 +1,10 @@
 const backendUrlInput = document.getElementById('backendUrl')
+const meetingTokenInput = document.getElementById('meetingToken')
 const meetingUrlInput = document.getElementById('meetingUrl')
 const startBtn = document.getElementById('startBtn')
 const stopBtn = document.getElementById('stopBtn')
 const statusEl = document.getElementById('status')
 const errorEl = document.getElementById('error')
-
-const JAZZWALL_ORIGIN = 'https://jazzwall.vercel.app'
 
 function showError(message = '') {
   errorEl.textContent = message
@@ -40,8 +39,9 @@ async function refreshStatus() {
 }
 
 async function loadSavedSettings() {
-  const data = await storageGet(['backendUrl'])
+  const data = await storageGet(['backendUrl', 'meetingToken'])
   backendUrlInput.value = data.backendUrl || 'http://localhost:3001'
+  meetingTokenInput.value = data.meetingToken || ''
 
   const tab = await getActiveTab()
   if (tab?.url?.includes('meet.google.com')) {
@@ -49,51 +49,62 @@ async function loadSavedSettings() {
   }
 }
 
-async function findJazzWallTab() {
-  const tabs = await chrome.tabs.query({ url: [`${JAZZWALL_ORIGIN}/*`, 'http://localhost:3000/*'] })
-  return tabs.find((tab) => Boolean(tab.id)) || null
-}
-
-async function fetchTokenFromJazzWallTab() {
-  const tab = await findJazzWallTab()
-
-  if (!tab?.id) {
-    throw new Error('Open jazzwall.vercel.app in a tab and sign in first.')
-  }
-
-  const response = await chrome.tabs.sendMessage(tab.id, {
-    type: 'JAZZWALL_GET_CLERK_TOKEN',
+async function verifyToken(apiUrl, token) {
+  const res = await fetch(`${apiUrl}/api/tokens/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token }),
   })
 
-  if (!response?.success || !response.token) {
-    throw new Error(response?.error || 'Could not fetch auth token from JazzWall tab.')
+  const data = await res.json()
+
+  if (!res.ok) {
+    return { valid: false, error: data.error || 'Invalid token' }
   }
 
-  return response.token
+  return data
 }
 
 startBtn.addEventListener('click', async () => {
   showError('')
 
   const backendUrl = backendUrlInput.value.trim()
+  const meetingToken = meetingTokenInput.value.trim()
   const meetingUrl = meetingUrlInput.value.trim()
 
-  if (!backendUrl || !meetingUrl) {
-    showError('backend URL and Meet URL are required.')
+  if (!backendUrl || !meetingUrl || !meetingToken) {
+    showError('Backend URL, meeting token, and Meet URL are required.')
     return
   }
 
   try {
-    const token = await fetchTokenFromJazzWallTab()
+    const verification = await verifyToken(backendUrl, meetingToken)
 
-    await storageSet({ backendUrl })
+    if (!verification.valid) {
+      showError(
+        verification.error === 'Token expired'
+          ? 'Token expired. Generate a new one from dashboard.'
+          : verification.error === 'Token already used'
+            ? 'Token already used. Generate another token from dashboard.'
+            : 'Invalid token. Please check and try again.'
+      )
+      return
+    }
+
+    const userId = verification.userId
+
+    await storageSet({ backendUrl, meetingToken })
+    await chrome.storage.session.set({ userId, meetingToken })
     const tab = await getActiveTab()
 
     const response = await chrome.runtime.sendMessage({
       type: 'START_RECORDING',
       payload: {
         backendUrl,
-        token,
+        userId,
+        meetingToken,
         meetingUrl,
         activeTabId: tab?.id || null,
       },

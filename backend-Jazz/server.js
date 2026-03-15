@@ -5,6 +5,7 @@ const morgan = require('morgan')
 const logger = require('./lib/logger')
 
 const streamRoutes = require('./routes/stream')
+const tokenRoutes = require('./routes/tokens')
 const webhookRoutes = require('./routes/webhook')
 
 const app = express()
@@ -34,6 +35,7 @@ app.use((req, res, next) => {
 })
 
 app.use('/api/stream', streamRoutes)
+app.use('/api/tokens', tokenRoutes)
 app.use('/api/webhook', webhookRoutes)
 
 // Health check with full system status

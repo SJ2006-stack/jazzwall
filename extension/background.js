@@ -4,7 +4,8 @@ const state = {
   isRecording: false,
   meetingId: null,
   meetingUrl: null,
-  token: null,
+  userId: null,
+  meetingToken: null,
   backendUrl: null,
   mediaRecorder: null,
   stream: null,
@@ -51,7 +52,7 @@ async function fetchJson(url, options) {
 }
 
 async function sendChunk(blob) {
-  if (!state.meetingId || !state.token || !state.backendUrl) return
+  if (!state.meetingId || !state.userId || !state.backendUrl) return
 
   const chunkBase64 = await toBase64(blob)
 
@@ -59,10 +60,10 @@ async function sendChunk(blob) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${state.token}`,
     },
     body: JSON.stringify({
       meetingId: state.meetingId,
+      userId: state.userId,
       chunkBase64,
       mimeType: blob.type || 'audio/webm',
       timestamp: Date.now(),
@@ -84,6 +85,8 @@ function resetState() {
   state.isRecording = false
   state.meetingId = null
   state.meetingUrl = null
+  state.userId = null
+  state.meetingToken = null
   state.mediaRecorder = null
   state.stream = null
   state.activeTabId = null
@@ -95,25 +98,27 @@ async function stopMeeting() {
   resetState()
   await storageSet({ recorderState: { isRecording: false, meetingId: null } })
 
-  if (!meetingId || !state.token || !state.backendUrl) return { success: true }
+  if (!meetingId || !state.userId || !state.backendUrl) return { success: true }
 
   return fetchJson(`${state.backendUrl}/api/stream/stop`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${state.token}`,
     },
-    body: JSON.stringify({ meetingId }),
+    body: JSON.stringify({
+      meetingId,
+      userId: state.userId,
+    }),
   })
 }
 
-async function startRecording({ backendUrl, token, meetingUrl, activeTabId }) {
+async function startRecording({ backendUrl, userId, meetingToken, meetingUrl, activeTabId }) {
   if (state.isRecording) {
     throw new Error('Recording already active')
   }
 
-  if (!backendUrl || !token || !meetingUrl) {
-    throw new Error('backendUrl, token, and meetingUrl are required')
+  if (!backendUrl || !userId || !meetingUrl) {
+    throw new Error('backendUrl, userId, and meetingUrl are required')
   }
 
   const meetingId = crypto.randomUUID()
@@ -122,10 +127,10 @@ async function startRecording({ backendUrl, token, meetingUrl, activeTabId }) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify({
       meetingId,
+      userId,
       meetUrl: meetingUrl,
     }),
   })
@@ -170,7 +175,8 @@ async function startRecording({ backendUrl, token, meetingUrl, activeTabId }) {
   state.isRecording = true
   state.meetingId = meetingId
   state.meetingUrl = meetingUrl
-  state.token = token
+  state.userId = userId
+  state.meetingToken = meetingToken || null
   state.backendUrl = backendUrl
   state.mediaRecorder = recorder
   state.stream = stream
@@ -180,6 +186,7 @@ async function startRecording({ backendUrl, token, meetingUrl, activeTabId }) {
     recorderState: {
       isRecording: true,
       meetingId,
+      userId,
       meetingUrl,
       startedAt: Date.now(),
     },

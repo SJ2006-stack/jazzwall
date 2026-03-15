@@ -101,12 +101,11 @@ async function transcribeChunk({ engineConfig, audioBuffer, mimeType }) {
   return transcribeWithDeepgram(audioBuffer, mimeType)
 }
 
-router.post('/start', requireAuth, async (req, res) => {
-  const userId = req.userId
-  const { meetingId, meetUrl, languageHint } = req.body
+router.post('/start', async (req, res) => {
+  const { meetingId, meetUrl, languageHint, userId } = req.body || {}
 
-  if (!meetingId) {
-    return res.status(400).json({ error: 'meetingId is required' })
+  if (!meetingId || !userId) {
+    return res.status(400).json({ error: 'meetingId and userId are required' })
   }
 
   try {
@@ -153,9 +152,8 @@ router.post('/start', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/chunk', requireAuth, async (req, res) => {
-  const userId = req.userId
-  const { meetingId, chunkBase64, mimeType, timestamp, speaker, text, languageHint } = req.body
+router.post('/chunk', async (req, res) => {
+  const { meetingId, chunkBase64, mimeType, timestamp, speaker, text, languageHint, userId } = req.body || {}
 
   if (!meetingId) {
     return res.status(400).json({ error: 'meetingId is required' })
@@ -176,7 +174,7 @@ router.post('/chunk', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Meeting not found' })
     }
 
-    if (meeting.user_id !== userId) {
+    if (userId && meeting.user_id !== userId) {
       return res.status(403).json({ error: 'Forbidden' })
     }
 
@@ -259,9 +257,8 @@ router.post('/chunk', requireAuth, async (req, res) => {
   }
 })
 
-router.post('/stop', requireAuth, async (req, res) => {
-  const userId = req.userId
-  const { meetingId } = req.body
+router.post('/stop', async (req, res) => {
+  const { meetingId, userId } = req.body || {}
 
   if (!meetingId) {
     return res.status(400).json({ error: 'meetingId is required' })
@@ -278,7 +275,7 @@ router.post('/stop', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Meeting not found' })
     }
 
-    if (meeting.user_id !== userId) {
+    if (userId && meeting.user_id !== userId) {
       return res.status(403).json({ error: 'Forbidden' })
     }
 

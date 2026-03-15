@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useState, useEffect } from "react"
 import { useUser } from "@clerk/nextjs"
 import Sidebar from "@/components/layout/Sidebar"
+import MeetingToken from "@/components/meeting/MeetingToken"
 import { supabase } from "@/lib/supabase"
 
 interface Meeting {
@@ -113,6 +114,10 @@ export default function DashboardPage() {
         </div>
 
         <div className="w-full max-w-5xl mx-auto px-6 sm:px-8 lg:px-12 py-6">
+          <div className="mb-6">
+            <MeetingToken />
+          </div>
+
           {/* Stats row */}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-10">
             {[
