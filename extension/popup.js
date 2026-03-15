@@ -1,10 +1,11 @@
-const backendUrlInput = document.getElementById('backendUrl')
 const meetingTokenInput = document.getElementById('meetingToken')
 const meetingUrlInput = document.getElementById('meetingUrl')
 const startBtn = document.getElementById('startBtn')
 const stopBtn = document.getElementById('stopBtn')
 const statusEl = document.getElementById('status')
 const errorEl = document.getElementById('error')
+
+const BACKEND_API_URL = 'https://jazzwall-production.up.railway.app'
 
 function showError(message = '') {
   errorEl.textContent = message
@@ -39,8 +40,7 @@ async function refreshStatus() {
 }
 
 async function loadSavedSettings() {
-  const data = await storageGet(['backendUrl', 'meetingToken'])
-  backendUrlInput.value = data.backendUrl || 'http://localhost:3001'
+  const data = await storageGet(['meetingToken'])
   meetingTokenInput.value = data.meetingToken || ''
 
   const tab = await getActiveTab()
@@ -70,17 +70,16 @@ async function verifyToken(apiUrl, token) {
 startBtn.addEventListener('click', async () => {
   showError('')
 
-  const backendUrl = backendUrlInput.value.trim()
   const meetingToken = meetingTokenInput.value.trim()
   const meetingUrl = meetingUrlInput.value.trim()
 
-  if (!backendUrl || !meetingUrl || !meetingToken) {
-    showError('Backend URL, meeting token, and Meet URL are required.')
+  if (!meetingUrl || !meetingToken) {
+    showError('Meeting token and Meet URL are required.')
     return
   }
 
   try {
-    const verification = await verifyToken(backendUrl, meetingToken)
+    const verification = await verifyToken(BACKEND_API_URL, meetingToken)
 
     if (!verification.valid) {
       showError(
@@ -95,14 +94,14 @@ startBtn.addEventListener('click', async () => {
 
     const userId = verification.userId
 
-    await storageSet({ backendUrl, meetingToken })
+    await storageSet({ meetingToken })
     await chrome.storage.session.set({ userId, meetingToken })
     const tab = await getActiveTab()
 
     const response = await chrome.runtime.sendMessage({
       type: 'START_RECORDING',
       payload: {
-        backendUrl,
+        backendUrl: BACKEND_API_URL,
         userId,
         meetingToken,
         meetingUrl,
