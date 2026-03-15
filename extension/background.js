@@ -93,21 +93,29 @@ function resetState() {
 }
 
 async function stopMeeting() {
+  // Snapshot values before reset clears state
   const meetingId = state.meetingId
+  const userId = state.userId
+  const backendUrl = state.backendUrl
+
+  // Avoid duplicate /stop call when stop() triggers recorder.onstop
+  if (state.mediaRecorder) {
+    state.mediaRecorder.onstop = null
+  }
 
   resetState()
   await storageSet({ recorderState: { isRecording: false, meetingId: null } })
 
-  if (!meetingId || !state.userId || !state.backendUrl) return { success: true }
+  if (!meetingId || !userId || !backendUrl) return { success: true }
 
-  return fetchJson(`${state.backendUrl}/api/stream/stop`, {
+  return fetchJson(`${backendUrl}/api/stream/stop`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       meetingId,
-      userId: state.userId,
+      userId,
     }),
   })
 }
@@ -119,6 +127,10 @@ async function startRecording({ backendUrl, userId, meetingToken, meetingUrl, ac
 
   if (!backendUrl || !userId || !meetingUrl) {
     throw new Error('backendUrl, userId, and meetingUrl are required')
+  }
+
+  if (!activeTabId) {
+    throw new Error('Active Meet tab not found. Open Meet tab and try again.')
   }
 
   const meetingId = crypto.randomUUID()
@@ -139,6 +151,7 @@ async function startRecording({ backendUrl, userId, meetingToken, meetingUrl, ac
     chrome.tabCapture.capture({
       audio: true,
       video: false,
+      tabId: activeTabId,
     }, (capturedStream) => {
       const chromeError = chrome.runtime.lastError
       if (chromeError) {
@@ -146,16 +159,18 @@ async function startRecording({ backendUrl, userId, meetingToken, meetingUrl, ac
         return
       }
       if (!capturedStream) {
-        reject(new Error('Could not capture tab audio'))
+        reject(new Error('Could not capture tab audio — make sure you are on the Meet tab'))
         return
       }
       resolve(capturedStream)
     })
   })
 
-  const recorder = new MediaRecorder(stream, {
-    mimeType: 'audio/webm;codecs=opus',
-  })
+  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus'
+    : 'audio/webm'
+
+  const recorder = new MediaRecorder(stream, { mimeType })
 
   recorder.ondataavailable = async (event) => {
     if (!event.data || event.data.size === 0) return
@@ -166,8 +181,21 @@ async function startRecording({ backendUrl, userId, meetingToken, meetingUrl, ac
     }
   }
 
-  recorder.onstop = () => {
-    stopMeeting().catch((err) => console.error('[JazzWall] stop failed', err))
+  recorder.onstop = async () => {
+    const meetingIdSnapshot = state.meetingId
+    const userIdSnapshot = state.userId
+    const backendUrlSnapshot = state.backendUrl
+
+    resetState()
+    await storageSet({ recorderState: { isRecording: false, meetingId: null } })
+
+    if (meetingIdSnapshot && userIdSnapshot && backendUrlSnapshot) {
+      fetchJson(`${backendUrlSnapshot}/api/stream/stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meetingId: meetingIdSnapshot, userId: userIdSnapshot }),
+      }).catch((err) => console.error('[JazzWall] stop failed', err))
+    }
   }
 
   recorder.start(CHUNK_MS)
