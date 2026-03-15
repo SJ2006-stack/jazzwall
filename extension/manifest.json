@@ -4,6 +4,7 @@
   "description": "Capture Google Meet audio and stream it to JazzWall for live transcript + meeting intelligence.",
   "version": "0.1.0",
   "permissions": [
+    "offscreen",
     "storage",
     "tabs",
     "activeTab",

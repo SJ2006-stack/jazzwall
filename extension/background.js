@@ -1,4 +1,5 @@
 const CHUNK_MS = 2000
+const OFFSCREEN_DOCUMENT_PATH = 'offscreen.html'
 
 const state = {
   isRecording: false,
@@ -7,10 +8,10 @@ const state = {
   userId: null,
   meetingToken: null,
   backendUrl: null,
-  mediaRecorder: null,
-  stream: null,
   activeTabId: null,
 }
+
+let creatingOffscreenDocument
 
 async function storageGet(keys) {
   return chrome.storage.local.get(keys)
@@ -18,19 +19,6 @@ async function storageGet(keys) {
 
 async function storageSet(values) {
   return chrome.storage.local.set(values)
-}
-
-function toBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const result = reader.result || ''
-      const base64 = String(result).split(',')[1] || ''
-      resolve(base64)
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
 }
 
 async function fetchJson(url, options) {
@@ -51,44 +39,61 @@ async function fetchJson(url, options) {
   return body
 }
 
-async function sendChunk(blob) {
-  if (!state.meetingId || !state.userId || !state.backendUrl) return
+async function ensureOffscreenDocument() {
+  if (!chrome.offscreen?.createDocument) {
+    throw new Error('Offscreen API unavailable. Please update Chrome to latest version.')
+  }
 
-  const chunkBase64 = await toBase64(blob)
+  if (chrome.offscreen.hasDocument) {
+    const hasDoc = await chrome.offscreen.hasDocument()
+    if (hasDoc) return
+  }
 
-  await fetchJson(`${state.backendUrl}/api/stream/chunk`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      meetingId: state.meetingId,
-      userId: state.userId,
-      chunkBase64,
-      mimeType: blob.type || 'audio/webm',
-      timestamp: Date.now(),
-    }),
+  if (creatingOffscreenDocument) {
+    await creatingOffscreenDocument
+    return
+  }
+
+  creatingOffscreenDocument = chrome.offscreen.createDocument({
+    url: OFFSCREEN_DOCUMENT_PATH,
+    reasons: ['USER_MEDIA'],
+    justification: 'Capture Google Meet tab audio for JazzWall recording',
+  })
+
+  try {
+    await creatingOffscreenDocument
+  } finally {
+    creatingOffscreenDocument = null
+  }
+}
+
+async function getMediaStreamIdForTab(tabId) {
+  return new Promise((resolve, reject) => {
+    chrome.tabCapture.getMediaStreamId({
+      targetTabId: tabId,
+    }, (streamId) => {
+      const chromeError = chrome.runtime.lastError
+      if (chromeError) {
+        reject(new Error(chromeError.message))
+        return
+      }
+
+      if (!streamId) {
+        reject(new Error('Could not create media stream id for Meet tab'))
+        return
+      }
+
+      resolve(streamId)
+    })
   })
 }
 
 function resetState() {
-  if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
-    state.mediaRecorder.stop()
-  }
-
-  if (state.stream) {
-    for (const track of state.stream.getTracks()) {
-      track.stop()
-    }
-  }
-
   state.isRecording = false
   state.meetingId = null
   state.meetingUrl = null
   state.userId = null
   state.meetingToken = null
-  state.mediaRecorder = null
-  state.stream = null
   state.activeTabId = null
 }
 
@@ -98,9 +103,10 @@ async function stopMeeting() {
   const userId = state.userId
   const backendUrl = state.backendUrl
 
-  // Avoid duplicate /stop call when stop() triggers recorder.onstop
-  if (state.mediaRecorder) {
-    state.mediaRecorder.onstop = null
+  try {
+    await chrome.runtime.sendMessage({ type: 'OFFSCREEN_STOP' })
+  } catch (err) {
+    console.warn('[JazzWall] offscreen stop warning:', err?.message || err)
   }
 
   resetState()
@@ -147,58 +153,24 @@ async function startRecording({ backendUrl, userId, meetingToken, meetingUrl, ac
     }),
   })
 
-  const stream = await new Promise((resolve, reject) => {
-    chrome.tabCapture.capture({
-      audio: true,
-      video: false,
-      tabId: activeTabId,
-    }, (capturedStream) => {
-      const chromeError = chrome.runtime.lastError
-      if (chromeError) {
-        reject(new Error(chromeError.message))
-        return
-      }
-      if (!capturedStream) {
-        reject(new Error('Could not capture tab audio — make sure you are on the Meet tab'))
-        return
-      }
-      resolve(capturedStream)
-    })
+  await ensureOffscreenDocument()
+
+  const streamId = await getMediaStreamIdForTab(activeTabId)
+
+  const offscreenStart = await chrome.runtime.sendMessage({
+    type: 'OFFSCREEN_START',
+    payload: {
+      streamId,
+      meetingId,
+      userId,
+      backendUrl,
+      chunkMs: CHUNK_MS,
+    },
   })
 
-  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-    ? 'audio/webm;codecs=opus'
-    : 'audio/webm'
-
-  const recorder = new MediaRecorder(stream, { mimeType })
-
-  recorder.ondataavailable = async (event) => {
-    if (!event.data || event.data.size === 0) return
-    try {
-      await sendChunk(event.data)
-    } catch (err) {
-      console.error('[JazzWall] chunk upload failed', err)
-    }
+  if (!offscreenStart?.success) {
+    throw new Error(offscreenStart?.error || 'Could not start audio capture')
   }
-
-  recorder.onstop = async () => {
-    const meetingIdSnapshot = state.meetingId
-    const userIdSnapshot = state.userId
-    const backendUrlSnapshot = state.backendUrl
-
-    resetState()
-    await storageSet({ recorderState: { isRecording: false, meetingId: null } })
-
-    if (meetingIdSnapshot && userIdSnapshot && backendUrlSnapshot) {
-      fetchJson(`${backendUrlSnapshot}/api/stream/stop`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ meetingId: meetingIdSnapshot, userId: userIdSnapshot }),
-      }).catch((err) => console.error('[JazzWall] stop failed', err))
-    }
-  }
-
-  recorder.start(CHUNK_MS)
 
   state.isRecording = true
   state.meetingId = meetingId
@@ -206,8 +178,6 @@ async function startRecording({ backendUrl, userId, meetingToken, meetingUrl, ac
   state.userId = userId
   state.meetingToken = meetingToken || null
   state.backendUrl = backendUrl
-  state.mediaRecorder = recorder
-  state.stream = stream
   state.activeTabId = activeTabId || null
 
   await storageSet({
@@ -225,14 +195,37 @@ async function startRecording({ backendUrl, userId, meetingToken, meetingUrl, ac
 
 chrome.runtime.onInstalled.addListener(async () => {
   await storageSet({
-    backendUrl: 'http://localhost:3001',
     recorderState: { isRecording: false, meetingId: null },
   })
 })
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === 'OFFSCREEN_START' || message?.type === 'OFFSCREEN_STOP') {
+    return false
+  }
+
   ;(async () => {
     try {
+      if (message?.type === 'OFFSCREEN_STOPPED') {
+        const meetingId = state.meetingId
+        const userId = state.userId
+        const backendUrl = state.backendUrl
+
+        resetState()
+        await storageSet({ recorderState: { isRecording: false, meetingId: null } })
+
+        if (meetingId && userId && backendUrl) {
+          await fetchJson(`${backendUrl}/api/stream/stop`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ meetingId, userId }),
+          })
+        }
+
+        sendResponse({ success: true })
+        return
+      }
+
       if (message?.type === 'START_RECORDING') {
         const response = await startRecording(message.payload || {})
         sendResponse(response)
