@@ -5,6 +5,7 @@ import { useState, useEffect } from "react"
 import { useUser } from "@clerk/nextjs"
 import Sidebar from "@/components/layout/Sidebar"
 import MeetingToken from "@/components/meeting/MeetingToken"
+import { useBackendHealth } from "@/hooks/useBackendHealth"
 import { supabase } from "@/lib/supabase"
 
 interface Meeting {
@@ -24,6 +25,7 @@ interface Stats {
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser()
+  const backendHealth = useBackendHealth()
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [stats, setStats] = useState<Stats>({ totalMeetings: 0, totalActionItems: 0, languages: 0, hoursSaved: "0h" })
   const [loading, setLoading] = useState(true)
@@ -114,6 +116,12 @@ export default function DashboardPage() {
         </div>
 
         <div className="w-full max-w-5xl mx-auto px-6 sm:px-8 lg:px-12 py-6">
+          {backendHealth === "error" && (
+            <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-600">
+              Backend is temporarily unavailable. Please try again in a moment.
+            </div>
+          )}
+
           <div className="mb-6">
             <MeetingToken />
           </div>

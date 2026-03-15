@@ -42,13 +42,7 @@ app.use('/api/webhook', webhookRoutes)
 app.get('/health', async (req, res) => {
   const supabase = require('./lib/supabase')
 
-  // Check Supabase connection
-  const { error: dbError } = await supabase
-    .from('meetings')
-    .select('count')
-    .limit(1)
-
-  const status = {
+  const checks = {
     status: 'ok',
     ts: Date.now(),
     uptime: process.uptime(),
@@ -60,11 +54,46 @@ app.get('/health', async (req, res) => {
       azure: !!process.env.AZURE_SPEECH_KEY,
       clerk: !!process.env.CLERK_SECRET_KEY,
     },
-    database: dbError ? 'error' : 'connected'
+    database: 'unknown',
+    groq_reachable: false,
+    version: process.env.npm_package_version || '1.0.0',
   }
 
-  logger.info('Health check', status)
-  res.json(status)
+  // Check Supabase
+  try {
+    const { error } = await supabase
+      .from('meetings')
+      .select('count')
+      .limit(1)
+
+    checks.database = error ? 'error' : 'connected'
+  } catch {
+    checks.database = 'error'
+  }
+
+  // Check Groq reachability
+  if (checks.env.groq) {
+    try {
+      const groqRes = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: {
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        },
+      })
+      checks.groq_reachable = groqRes.ok
+    } catch {
+      checks.groq_reachable = false
+    }
+  }
+
+  const isHealthy =
+    checks.database === 'connected' &&
+    checks.env.supabase &&
+    checks.env.clerk
+
+  checks.status = isHealthy ? 'ok' : 'degraded'
+
+  logger.info('Health check', checks)
+  res.status(isHealthy ? 200 : 503).json(checks)
 })
 
 // Global error handler
