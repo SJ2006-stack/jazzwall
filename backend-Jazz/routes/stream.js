@@ -8,12 +8,22 @@ const logger = require('../lib/logger')
 // Actual transcription is now handled server-side via the Socket.io → Deepgram bridge in server.js
 const meetingSessions = new Map()
 
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function isValidMeetingId(meetingId) {
+  return typeof meetingId === 'string' && UUID_V4_REGEX.test(meetingId)
+}
+
 // ─── POST /api/stream/start ───────────────────────────────────────────────────
 router.post('/start', async (req, res) => {
   const { meetingId, meetUrl, languageHint, userId } = req.body || {}
 
   if (!meetingId || !userId) {
     return res.status(400).json({ error: 'meetingId and userId are required' })
+  }
+
+  if (!isValidMeetingId(meetingId)) {
+    return res.status(400).json({ error: 'meetingId must be a valid UUID' })
   }
 
   try {
@@ -53,6 +63,10 @@ router.post('/stop', async (req, res) => {
 
   if (!meetingId) {
     return res.status(400).json({ error: 'meetingId is required' })
+  }
+
+  if (!isValidMeetingId(meetingId)) {
+    return res.status(400).json({ error: 'meetingId must be a valid UUID' })
   }
 
   try {

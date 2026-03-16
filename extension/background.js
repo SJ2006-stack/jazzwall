@@ -94,7 +94,29 @@ function resetState() {
   state.meetingUrl = null
   state.userId = null
   state.meetingToken = null
+  state.backendUrl = null
   state.activeTabId = null
+}
+
+function isMeetUrl(url = '') {
+  return typeof url === 'string' && url.startsWith('https://meet.google.com/')
+}
+
+async function stopRecordingIfActive(reason = 'unknown') {
+  if (!state.isRecording) return { success: true, skipped: true }
+
+  console.info('[JazzWall] Auto-stopping recording', {
+    reason,
+    meetingId: state.meetingId,
+    activeTabId: state.activeTabId,
+  })
+
+  try {
+    return await stopMeeting()
+  } catch (err) {
+    console.error('[JazzWall] Auto-stop failed', { reason, error: err?.message || String(err) })
+    throw err
+  }
 }
 
 async function stopMeeting() {
@@ -199,6 +221,25 @@ chrome.runtime.onInstalled.addListener(async () => {
   })
 })
 
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (!state.isRecording) return
+  if (!state.activeTabId) return
+  if (tabId !== state.activeTabId) return
+
+  void stopRecordingIfActive('meet-tab-closed')
+})
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (!state.isRecording) return
+  if (!state.activeTabId) return
+  if (tabId !== state.activeTabId) return
+
+  const nextUrl = changeInfo.url || tab?.url || ''
+  if (nextUrl && !isMeetUrl(nextUrl)) {
+    void stopRecordingIfActive('navigated-away-from-meet')
+  }
+})
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'OFFSCREEN_START' || message?.type === 'OFFSCREEN_STOP') {
     return false
@@ -244,6 +285,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           success: true,
           ...(recorderState || { isRecording: false, meetingId: null }),
         })
+        return
+      }
+
+      if (message?.type === 'SOCKET_ERROR') {
+        await stopRecordingIfActive(`socket-error:${message?.payload?.message || 'unknown'}`)
+        sendResponse({ success: true })
         return
       }
 

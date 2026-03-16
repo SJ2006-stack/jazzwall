@@ -54,6 +54,20 @@ async function startOffscreenRecording(payload) {
     video: false,
   })
 
+  const [audioTrack] = stream.getAudioTracks()
+  if (audioTrack) {
+    audioTrack.onended = () => {
+      console.warn('[JazzWall/offscreen] Meet audio track ended; stopping recorder')
+      if (offscreenState.recorder && offscreenState.recorder.state !== 'inactive') {
+        offscreenState.recorder.stop()
+      } else {
+        cleanupRecorderState()
+        cleanupSocket()
+        chrome.runtime.sendMessage({ type: 'OFFSCREEN_STOPPED' }).catch(() => {})
+      }
+    }
+  }
+
   // ── 2. Connect Socket.io to backend ───────────────────────────────────────
   // io() is provided by the socket.io-client CDN script in offscreen.html
   const socket = io(backendUrl, {
