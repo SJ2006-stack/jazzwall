@@ -109,9 +109,9 @@ export default function MeetingPage() {
     fetchMeeting()
   }, [isLoaded, user, meetingId])
 
-  /* ── Realtime subscription for active meetings ── */
+  /* ── Realtime subscription ── */
   useEffect(() => {
-    if (!meeting || meeting.status !== "active") return
+    if (!meetingId) return
 
     // Subscribe to new transcript chunks
     const transcriptChannel = supabase
@@ -177,7 +177,7 @@ export default function MeetingPage() {
       supabase.removeChannel(summaryChannel)
       supabase.removeChannel(meetingChannel)
     }
-  }, [meeting?.status, meetingId])
+  }, [meetingId])
 
   /* ── Elapsed timer for active meetings ── */
   useEffect(() => {
