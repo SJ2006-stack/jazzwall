@@ -1,5 +1,7 @@
 "use client"
 
+export const runtime = "edge"
+
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { useUser } from "@clerk/nextjs"
