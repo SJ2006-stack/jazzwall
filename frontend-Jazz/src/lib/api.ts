@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://jazzwall-production.up.railway.app"
 
 /** Parse JSON safely — throws a human-readable error if Railway returns an HTML page (cold start / 503). */
 async function safeJson(res: Response) {

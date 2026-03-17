@@ -6,7 +6,8 @@ export function useBackendHealth() {
   useEffect(() => {
     const check = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/health`)
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://jazzwall-production.up.railway.app"
+        const res = await fetch(`${apiUrl}/health`)
         const ct = res.headers.get('content-type') ?? ''
         if (!ct.includes('application/json')) {
           setStatus('error')
