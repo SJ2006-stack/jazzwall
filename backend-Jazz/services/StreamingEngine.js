@@ -1,17 +1,9 @@
 const { Server: SocketIO } = require('socket.io')
-const WebSocket = require('ws')
+const { createClient, LiveTranscriptionEvents } = require('@deepgram/sdk')
 const logger = require('../lib/logger')
 const supabase = require('../lib/supabase')
 
-const DEEPGRAM_URL =
-  'wss://api.deepgram.com/v1/listen' +
-  '?model=nova-3' +
-  '&language=multi' +
-  '&smart_format=true' +
-  '&interim_results=true' +
-  '&endpointing=300' +
-  '&utterance_end_ms=1000' +
-  '&vad_events=true'
+const deepgram = createClient(process.env.DEEPGRAM_API_KEY)
 
 function initStreamingEngine(httpServer) {
   const io = new SocketIO(httpServer, {
@@ -49,38 +41,51 @@ function initStreamingEngine(httpServer) {
 
       logger.info('Socket joined meeting', { socketId: socket.id, meetingId })
 
-      dgSocket = new WebSocket(DEEPGRAM_URL, {
-        headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` },
+      dgSocket = deepgram.listen.live({
+        model: 'nova-2',
+        punctuate: true,
+        smart_format: true,
+        interim_results: true,
+        diarize: true,
+        endpointing: 300,
+        utterance_end_ms: 1000,
+        vad_events: true
       })
 
-      dgSocket.on('open', () => {
-        logger.info('Deepgram WS open', { meetingId })
+      dgSocket.on(LiveTranscriptionEvents.Open, () => {
+        logger.info('Deepgram SDK live open', { meetingId })
         socket.emit('ready', { message: 'Streaming Engine ready' })
       })
 
-      dgSocket.on('message', async (rawData) => {
-        let msg
-        try { msg = JSON.parse(rawData.toString()) } catch { return }
+      dgSocket.on(LiveTranscriptionEvents.Transcript, async (data) => {
+        if (data.type === 'UtteranceEnd' || data.type === 'SpeechStarted') return
 
-        if (msg.type === 'UtteranceEnd' || msg.type === 'SpeechStarted') return
+        const alt = data.channel?.alternatives?.[0]
+        const text = alt?.transcript
+        if (!text) return
 
-        const alt = msg?.channel?.alternatives?.[0]
-        const transcript = alt?.transcript
-        if (!transcript || !transcript.trim()) return
+        // Extract speaker from words (diarization)
+        const speakerId = alt.words?.[0]?.speaker ?? null;
+        const speakerName = speakerId !== null ? `Speaker ${speakerId + 1}` : 'Speaker';
 
-        const isFinal = msg.is_final === true
-        const isSpeechFinal = msg.speech_final === true
+        const isFinal = data.is_final === true
+        const isSpeechFinal = data.speech_final === true
 
         // 1. Emit live text -> extension/frontend
-        socket.emit('transcript', { text: transcript, isFinal: isFinal || isSpeechFinal, timestamp: Date.now() })
+        socket.emit('transcript', { 
+          text: text, 
+          speaker: speakerName,
+          isFinal: isFinal || isSpeechFinal, 
+          timestamp: Date.now() 
+        })
 
         // 2. Persist transcripts -> database
         if (isFinal || isSpeechFinal) {
           try {
             await supabase.from('transcripts').insert({
               meeting_id: meetingId,
-              speaker: 'Speaker',
-              text: transcript,
+              speaker: speakerName,
+              text: text,
               timestamp: Date.now(),
             })
           } catch (err) {
@@ -89,27 +94,26 @@ function initStreamingEngine(httpServer) {
         }
       })
 
-      dgSocket.on('error', (err) => {
-        logger.error('Deepgram WS error', { error: err.message, meetingId })
+      dgSocket.on(LiveTranscriptionEvents.Error, (err) => {
+        logger.error('Deepgram SDK error', { error: err.message, meetingId })
         socket.emit('stream-error', { message: 'STT engine error' })
       })
 
-      dgSocket.on('close', () => { dgSocket = null })
+      dgSocket.on(LiveTranscriptionEvents.Close, () => { dgSocket = null })
     })
 
     socket.on('audio-chunk', (chunk) => {
-      if (dgSocket && dgSocket.readyState === WebSocket.OPEN) {
+      if (dgSocket && dgSocket.getReadyState() === 1) { // 1 = OPEN
         dgSocket.send(chunk)
       }
     })
 
     socket.on('disconnect', () => {
-      if (dgSocket && dgSocket.readyState === WebSocket.OPEN) {
+      if (dgSocket && dgSocket.getReadyState() === 1) {
         try { 
-          dgSocket.send(JSON.stringify({ type: 'CloseStream' }))
-          // Wait briefly before actually closing socket to let last messages flow
+          // Deepgram SDK handles graceful close
           setTimeout(() => {
-            if (dgSocket) dgSocket.close()
+            if (dgSocket) dgSocket.finish()
           }, 500)
         } catch {}
       }

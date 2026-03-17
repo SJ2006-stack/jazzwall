@@ -94,7 +94,7 @@ async function startOffscreenRecording(payload) {
     // Forward interim + final transcripts to background service worker
     chrome.runtime.sendMessage({
       type: 'TRANSCRIPT_UPDATE',
-      payload: { text: data.text, isFinal: data.isFinal, timestamp: data.timestamp },
+      payload: { text: data.text, speaker: data.speaker, isFinal: data.isFinal, timestamp: data.timestamp },
     }).catch(() => {})
   })
 
