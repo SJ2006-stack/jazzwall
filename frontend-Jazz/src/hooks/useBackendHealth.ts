@@ -7,9 +7,14 @@ export function useBackendHealth() {
     const check = async () => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/health`)
-        setStatus(res.ok ? "ok" : "error")
+        const ct = res.headers.get('content-type') ?? ''
+        if (!ct.includes('application/json')) {
+          setStatus('error')
+          return
+        }
+        setStatus(res.ok ? 'ok' : 'error')
       } catch {
-        setStatus("error")
+        setStatus('error')
       }
     }
 

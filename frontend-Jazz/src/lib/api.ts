@@ -1,5 +1,18 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
+/** Parse JSON safely — throws a human-readable error if Railway returns an HTML page (cold start / 503). */
+async function safeJson(res: Response) {
+  const ct = res.headers.get('content-type') ?? ''
+  if (!ct.includes('application/json')) {
+    throw new Error(
+      res.status === 503
+        ? 'Backend is waking up — please try again in a few seconds.'
+        : `Backend returned HTTP ${res.status} (expected JSON).`
+    )
+  }
+  return res.json()
+}
+
 export const api = {
   startStream: async (payload: {
     meetingId: string
@@ -14,7 +27,7 @@ export const api = {
       },
       body: JSON.stringify(payload),
     })
-    return res.json()
+    return safeJson(res)
   },
 
   sendChunk: async (payload: {
@@ -34,7 +47,7 @@ export const api = {
       },
       body: JSON.stringify(payload),
     })
-    return res.json()
+    return safeJson(res)
   },
 
   stopStream: async (meetingId: string, token: string) => {
@@ -46,7 +59,7 @@ export const api = {
       },
       body: JSON.stringify({ meetingId }),
     })
-    return res.json()
+    return safeJson(res)
   },
 
   getMeeting: async (meetingId: string, token: string) => {
@@ -56,6 +69,6 @@ export const api = {
         'Authorization': `Bearer ${token}`,
       },
     })
-    return res.json()
+    return safeJson(res)
   },
 }

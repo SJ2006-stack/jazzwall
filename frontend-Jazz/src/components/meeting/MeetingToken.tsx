@@ -29,6 +29,16 @@ export default function MeetingToken() {
         },
       })
 
+      // Guard against non-JSON responses (e.g. Railway cold-start HTML 503 page)
+      const contentType = res.headers.get("content-type") ?? ""
+      if (!contentType.includes("application/json")) {
+        throw new Error(
+          res.status === 503
+            ? "Backend is waking up — please try again in a few seconds."
+            : `Backend returned an unexpected response (HTTP ${res.status}).`
+        )
+      }
+
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Token generation failed")
 
