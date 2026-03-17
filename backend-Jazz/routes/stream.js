@@ -16,15 +16,14 @@ function isValidMeetingId(meetingId) {
 
 // ─── POST /api/stream/start ───────────────────────────────────────────────────
 router.post('/start', async (req, res) => {
-  const { meetingId, meetUrl, languageHint, userId } = req.body || {}
+  const { meetUrl, languageHint, userId } = req.body || {}
 
-  if (!meetingId || !userId) {
-    return res.status(400).json({ error: 'meetingId and userId are required' })
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required' })
   }
 
-  if (!isValidMeetingId(meetingId)) {
-    return res.status(400).json({ error: 'meetingId must be a valid UUID' })
-  }
+  // Session Manager creates sessionId (meetingId in our schema)
+  const meetingId = require('crypto').randomUUID()
 
   try {
     const { data, error } = await supabase

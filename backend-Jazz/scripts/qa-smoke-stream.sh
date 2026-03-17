@@ -32,12 +32,18 @@ HEALTH_STATUS=$(curl -sS -o /tmp/jazz_health.json -w "%{http_code}" "$BASE_URL/h
 expect_status "200" "$HEALTH_STATUS" "health"
 
 # 2) Create meeting
-MEETING_ID="$(uuid)"
 START_STATUS=$(curl -sS -o /tmp/jazz_start.json -w "%{http_code}" \
   -X POST "$BASE_URL/api/stream/start" \
   -H 'Content-Type: application/json' \
-  --data "{\"meetingId\":\"$MEETING_ID\",\"userId\":\"$USER_ID\",\"meetUrl\":\"$MEET_URL\"}")
+  --data "{\"userId\":\"$USER_ID\",\"meetUrl\":\"$MEET_URL\"}")
 expect_status "200" "$START_STATUS" "stream/start"
+
+# Extract the meetingId from the JSON response (requires jq or python)
+MEETING_ID=$(python3 -c "import sys, json; print(json.load(sys.stdin).get('meetingId', ''))" < /tmp/jazz_start.json)
+if [[ -z "$MEETING_ID" ]]; then
+  echo "❌ Failed to extract meetingId from start response"
+  exit 1
+fi
 
 # 3) Socket.IO handshake + join + ready
 HANDSHAKE=$(curl -sS "$BASE_URL/socket.io/?EIO=4&transport=polling")
@@ -83,10 +89,10 @@ STOP_STATUS=$(curl -sS -o /tmp/jazz_stop.json -w "%{http_code}" \
 expect_status "200" "$STOP_STATUS" "stream/stop"
 
 # 5) Invalid meetingId check (should be 400)
-INVALID_STATUS=$(curl -sS -o /tmp/jazz_invalid_start.json -w "%{http_code}" \
-  -X POST "$BASE_URL/api/stream/start" \
+INVALID_STATUS=$(curl -sS -o /tmp/jazz_invalid_stop.json -w "%{http_code}" \
+  -X POST "$BASE_URL/api/stream/stop" \
   -H 'Content-Type: application/json' \
-  --data "{\"meetingId\":\"not-a-uuid\",\"userId\":\"$USER_ID\",\"meetUrl\":\"$MEET_URL\"}")
+  --data '{"meetingId":"not-a-uuid","userId":"$USER_ID"}')
 expect_status "400" "$INVALID_STATUS" "invalid meetingId validation"
 
 echo "🎉 Smoke QA passed"

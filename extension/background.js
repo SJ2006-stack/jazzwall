@@ -161,19 +161,23 @@ async function startRecording({ backendUrl, userId, meetingToken, meetingUrl, ac
     throw new Error('Active Meet tab not found. Open Meet tab and try again.')
   }
 
-  const meetingId = crypto.randomUUID()
-
-  await fetchJson(`${backendUrl}/api/stream/start`, {
+  const startResponse = await fetchJson(`${backendUrl}/api/stream/start`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      meetingId,
       userId,
       meetUrl: meetingUrl,
     }),
   })
+
+  // Session Manager returns the newly created sessionId (meetingId)
+  const meetingId = startResponse.meetingId;
+
+  if (!meetingId) {
+    throw new Error('Failed to obtain a valid session ID from backend')
+  }
 
   await ensureOffscreenDocument()
 

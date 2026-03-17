@@ -50,7 +50,8 @@ async function loadSavedSettings() {
 }
 
 async function verifyToken(apiUrl, token) {
-  const res = await fetch(`${apiUrl}/api/tokens/verify`, {
+  // Uses the Access Controller per architecture flow
+  const res = await fetch(`${apiUrl}/api/access/check`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
