@@ -9,7 +9,8 @@ const DEEPGRAM_URL =
   '&language=multi' +
   '&smart_format=true' +
   '&interim_results=true' +
-  '&utterance_end_ms=1500' +
+  '&endpointing=300' +
+  '&utterance_end_ms=1000' +
   '&vad_events=true'
 
 function initStreamingEngine(httpServer) {
@@ -68,12 +69,13 @@ function initStreamingEngine(httpServer) {
         if (!transcript || !transcript.trim()) return
 
         const isFinal = msg.is_final === true
+        const isSpeechFinal = msg.speech_final === true
 
         // 1. Emit live text -> extension/frontend
-        socket.emit('transcript', { text: transcript, isFinal, timestamp: Date.now() })
+        socket.emit('transcript', { text: transcript, isFinal: isFinal || isSpeechFinal, timestamp: Date.now() })
 
         // 2. Persist transcripts -> database
-        if (isFinal) {
+        if (isFinal || isSpeechFinal) {
           try {
             await supabase.from('transcripts').insert({
               meeting_id: meetingId,
@@ -102,8 +104,14 @@ function initStreamingEngine(httpServer) {
     })
 
     socket.on('disconnect', () => {
-      if (dgSocket) {
-        try { dgSocket.close() } catch {}
+      if (dgSocket && dgSocket.readyState === WebSocket.OPEN) {
+        try { 
+          dgSocket.send(JSON.stringify({ type: 'CloseStream' }))
+          // Wait briefly before actually closing socket to let last messages flow
+          setTimeout(() => {
+            if (dgSocket) dgSocket.close()
+          }, 500)
+        } catch {}
       }
     })
   })

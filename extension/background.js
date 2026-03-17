@@ -1,4 +1,4 @@
-const CHUNK_MS = 250
+const CHUNK_MS = 100
 const OFFSCREEN_DOCUMENT_PATH = 'offscreen.html'
 
 const state = {

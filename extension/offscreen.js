@@ -146,8 +146,8 @@ function startMediaRecorder(stream, socket, chunkMs) {
     chrome.runtime.sendMessage({ type: 'OFFSCREEN_STOPPED' }).catch(() => {})
   }
 
-  // 250 ms timeslice — continuous byte stream to Deepgram, no header fragmentation
-  recorder.start(chunkMs || 250)
+  // 100 ms timeslice — continuous byte stream to Deepgram, no header fragmentation
+  recorder.start(chunkMs || 100)
   console.log('[JazzWall/offscreen] MediaRecorder started at', chunkMs || 250, 'ms timeslice')
 }
 
