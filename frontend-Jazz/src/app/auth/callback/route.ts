@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { currentUser } from "@clerk/nextjs/server"
-import { supabaseAdmin } from "@/lib/supabase"
+import { createClient } from "@supabase/supabase-js"
 
 export const runtime = "edge"
 
@@ -16,6 +16,17 @@ export async function GET(request: NextRequest) {
     const user = await currentUser()
 
     if (user) {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+      // Never fail sign-in redirect just because waitlist sync env is missing.
+      if (!supabaseUrl || !serviceRoleKey) {
+        console.warn("Skipping waitlist sync: missing SUPABASE url/service role env vars")
+        return NextResponse.redirect(`${origin}${next}`)
+      }
+
+      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
+
       const email = user.emailAddresses[0]?.emailAddress ?? ""
       const name =
         user.fullName ??

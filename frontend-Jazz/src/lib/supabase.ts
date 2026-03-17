@@ -5,8 +5,8 @@ import type { Database } from "@/types/database.types"
  * Public Supabase client — for client-side DB reads
  * that respect Row Level Security (RLS).
  */
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder-project.supabase.co"
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key"
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
@@ -17,7 +17,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
  */
 export const supabaseAdmin = createClient<Database>(
   supabaseUrl,
-  process.env.SUPABASE_SERVICE_ROLE_KEY ?? supabaseAnonKey
+  process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey
 )
 
 
